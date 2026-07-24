@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canton Climate Action Plan Dashboard</title>
+<style>
+:root{
+  --navy:#1B3A6B; --navy-deep:#12294D; --navy-tint:#E8EDF5;
+  --red:#B22234;
+  --paper:#FAFAFA; --card:#FFFFFF; --ink:#22293B; --ink-soft:#5A6377;
+  --line:#DBE0E8;
+  --st-not:#B9C2CE; --st-prog:#E0A426; --st-done:#3E8E5F; --st-hold:#8A8F98;
+  --not-tint:#EFF1F4; --amber-tint:#FBF3DE; --done-tint:#E4F1E9; --hold-tint:#ECEDEF;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;background:var(--paper);color:var(--ink);font-size:15px;line-height:1.5}
+
+.topbar{background:var(--navy-deep);color:#fff;padding:11px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:sticky;top:0;z-index:100}
+.topbar .brand{font-size:12.5px;font-weight:700;letter-spacing:.04em}
+.topbar .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.tbtn{border:1px solid #3A5A8F;background:transparent;color:#C3CDDD;font:600 11.5px inherit;font-family:inherit;padding:6px 12px;border-radius:7px;cursor:pointer}
+.tbtn:hover{background:#2A4677}
+.tbtn.primary{background:#2A4677;border-color:#4A6DA5;color:#fff}
+.syncmsg{font-size:11.5px;color:#A9B8D4}
+.status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#5FBF8A;margin-right:6px}
+.status-dot.stale{background:#E0A426}.status-dot.err{background:#D96B6B}
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 70px}
+.masthead{padding:30px 0 18px;border-bottom:4px solid var(--red);display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.masthead .city{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin-bottom:6px}
+.masthead h1{font-size:27px;font-weight:700;color:var(--navy-deep);line-height:1.15}
+.masthead .sub{color:var(--ink-soft);margin-top:6px;font-size:13.5px}
+.asof{font-size:11.5px;color:var(--ink-soft);text-align:right}
+
+.setup{background:#FFF8E6;border:1px solid #E8D08A;border-radius:10px;padding:20px 22px;margin-top:22px}
+.setup h2{font-size:16px;color:#7A5B10;margin-bottom:10px}
+.setup ol{margin:0 0 14px 18px;font-size:13.5px;line-height:1.85;color:#5C4A1A}
+.setup code{background:#F3E7C4;padding:1px 5px;border-radius:4px;font-size:12.5px}
+.setup .row{display:flex;gap:8px;flex-wrap:wrap}
+.setup input{flex:1;min-width:260px;border:1.5px solid #E8D08A;border-radius:7px;padding:9px 11px;font:inherit;font-size:13px;font-family:inherit}
+.setup button{border:0;background:var(--navy);color:#fff;font:600 13px inherit;font-family:inherit;padding:9px 18px;border-radius:7px;cursor:pointer}
+.setup .err{color:#A33;font-size:12.5px;margin-top:8px;display:none}
+
+/* KPI strip */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:20px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.kpi .n{font-size:29px;font-weight:700;color:var(--navy-deep);line-height:1}
+.kpi .l{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin-top:6px}
+
+/* Charts */
+.charts{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;margin-top:16px}
+.panelbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+.panelbox h2{font-size:14.5px;color:var(--navy-deep);margin-bottom:4px}
+.panelbox .cap{font-size:12px;color:var(--ink-soft);margin-bottom:16px}
+.chartlegend{display:flex;gap:16px;font-size:12px;color:var(--ink-soft);margin-bottom:14px;flex-wrap:wrap}
+.chartlegend b{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* horizontal stacked bars */
+.bars{display:flex;flex-direction:column;gap:11px}
+.barrow{display:grid;grid-template-columns:160px 1fr 34px;gap:12px;align-items:center;cursor:pointer;border-radius:6px;padding:3px 4px;margin:-3px -4px;transition:background .12s}
+.barrow:hover{background:var(--navy-tint)}
+.barrow .nm{font-size:12.5px;color:var(--ink);line-height:1.3}
+.barrow .track{height:20px;border-radius:5px;overflow:hidden;display:flex;background:var(--not-tint)}
+.barrow .track i{display:block;height:100%;position:relative}
+.barrow .track i.sD{background:var(--st-done)}
+.barrow .track i.sP{background:var(--st-prog)}
+.barrow .track i.sH{background:var(--st-hold)}
+.barrow .track i.sN{background:var(--st-not)}
+.barrow .tot{font-size:13px;font-weight:700;color:var(--navy-deep);text-align:right}
+
+/* donut */
+.donutwrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.donut{position:relative;width:190px;height:190px}
+.donut .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.donut .mid .n{font-size:30px;font-weight:700;color:var(--navy-deep);line-height:1}
+.donut .mid .l{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin-top:3px}
+.dlegend{width:100%}
+.dlegend .r{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:4px 0}
+.dlegend .r b{width:10px;height:10px;border-radius:3px;flex:none}
+.dlegend .r .v{margin-left:auto;font-weight:700;color:var(--navy-deep)}
+
+/* department chart */
+.deptrow{display:grid;grid-template-columns:190px 1fr 28px;gap:10px;align-items:center;padding:3px 0}
+.deptrow .nm{font-size:12px;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.deptrow .bar{height:14px;background:var(--navy);border-radius:4px;min-width:3px}
+.deptrow .v{font-size:12px;font-weight:700;color:var(--navy-deep);text-align:right}
+
+/* sector nav buttons */
+.sectornav{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:26px}
+.sbtn{border:0;border-radius:9px;padding:14px 12px;cursor:pointer;color:#fff;font-family:inherit;text-align:center;transition:.15s;opacity:.94}
+.sbtn:hover{opacity:1;transform:translateY(-1px)}
+.sbtn.on{outline:3px solid var(--navy-deep);outline-offset:2px}
+.sbtn .t{font-size:12.5px;font-weight:700;line-height:1.3}
+.sbtn .c{font-size:11px;opacity:.9;margin-top:4px}
+
+/* action list */
+.sectionhead{display:flex;align-items:baseline;gap:12px;margin:28px 0 12px;flex-wrap:wrap}
+.sectionhead h2{font-size:17px;color:var(--navy-deep)}
+.sectionhead .n{font-size:13px;color:var(--ink-soft)}
+.sectionhead button{margin-left:auto;border:1.5px solid var(--navy);background:none;color:var(--navy);font:600 12px inherit;font-family:inherit;padding:6px 12px;border-radius:7px;cursor:pointer}
+.alist{display:flex;flex-direction:column;gap:8px}
+.act{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:112px 1fr 180px;gap:14px;align-items:center;cursor:pointer;text-align:left;font-family:inherit;font-size:inherit;color:inherit;width:100%}
+.act:hover{border-color:var(--navy);box-shadow:0 2px 8px rgba(27,58,107,.08)}
+.act .t{font-weight:600;font-size:13.5px;line-height:1.4}
+.act .m{font-size:11.5px;color:var(--ink-soft);margin-top:3px}
+.act .lead{font-size:12px;color:var(--ink-soft);text-align:right}
+.badge{display:inline-block;font:700 10.5px inherit;font-family:inherit;letter-spacing:.05em;text-transform:uppercase;border-radius:6px;padding:5px 8px;text-align:center}
+.badge.done{background:var(--done-tint);color:#256B44}
+.badge.prog{background:var(--amber-tint);color:#94690F}
+.badge.not{background:var(--not-tint);color:#5A6377}
+.badge.hold{background:var(--hold-tint);color:#4A4F57}
+
+/* panel */
+.overlay{position:fixed;inset:0;background:rgba(18,41,77,.4);opacity:0;pointer-events:none;transition:.25s;z-index:200}
+.overlay.show{opacity:1;pointer-events:auto}
+.panel{position:fixed;top:0;right:-640px;width:min(640px,100vw);height:100vh;background:var(--card);box-shadow:-8px 0 30px rgba(0,0,0,.15);transition:right .28s ease;z-index:201;overflow-y:auto}
+.panel.show{right:0}
+.panel-head{background:var(--navy);color:#fff;padding:22px 26px;position:relative}
+.panel-head .sec{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#A9B8D4;font-weight:700}
+.panel-head h3{font-size:18px;margin-top:6px;line-height:1.4;padding-right:44px}
+.panel-close{position:absolute;top:14px;right:16px;border:0;background:rgba(255,255,255,.15);color:#fff;width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;font-family:inherit}
+.panel-body{padding:22px 26px 70px}
+.dsec{margin-bottom:16px}
+.dsec .k{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;margin-bottom:5px}
+.dsec .v{font-size:13px;line-height:1.55}
+.kpitext{white-space:pre-line}
+.editlink{display:inline-block;margin-top:6px;background:var(--navy);color:#fff;font:600 12.5px inherit;font-family:inherit;padding:8px 14px;border-radius:7px;text-decoration:none}
+
+.footer-note{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-soft);line-height:1.6}
+.hidden{display:none}
+button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+@media(max-width:900px){
+  .charts{grid-template-columns:1fr}
+  .barrow{grid-template-columns:120px 1fr 30px}
+  .act{grid-template-columns:1fr}
+  .act .lead{text-align:left}
+  .deptrow{grid-template-columns:140px 1fr 26px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="brand">Canton Climate Action Plan Dashboard</span>
+  <div class="right">
+    <span class="syncmsg" id="syncmsg"></span>
+    <button class="tbtn primary" onclick="loadSheet()">Refresh</button>
+    <button class="tbtn" onclick="changeSheet()">Change sheet</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="masthead">
+    <div>
+      <div class="city">City of Canton, Ohio</div>
+      <h1>Climate Action Plan Dashboard</h1>
+      <div class="sub">Implementation progress across near-term actions under direct city control</div>
+    </div>
+    <div class="asof" id="asof"></div>
+  </div>
+
+  <div class="setup" id="setup">
+    <h2>Connect your Google Sheet</h2>
+    <ol>
+      <li>Open <code>Canton_Tracker_SheetTemplate.csv</code> in Google Sheets (File → Import → Upload).</li>
+      <li>In the sheet: <strong>File → Share → Publish to web</strong>, set the format dropdown to <em>Comma-separated values (.csv)</em>, click Publish.</li>
+      <li>Paste the link below.</li>
+    </ol>
+    <div class="row">
+      <input type="text" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/e/2PACX-.../pub?output=csv">
+      <button onclick="connectSheet()">Connect</button>
+    </div>
+    <div class="err" id="setupErr"></div>
+  </div>
+
+  <div id="main" class="hidden">
+    <div class="kpis" id="kpis"></div>
+
+    <div class="charts">
+      <div class="panelbox">
+        <h2>Action status by sector</h2>
+        <div class="cap">Every near-term action, grouped by the sector of the climate plan it belongs to. Click a bar to see that sector's actions.</div>
+        <div class="chartlegend">
+          <span><b style="background:var(--st-done)"></b>Complete</span>
+          <span><b style="background:var(--st-prog)"></b>In progress</span>
+          <span><b style="background:var(--st-hold)"></b>On hold</span>
+          <span><b style="background:var(--st-not)"></b>Not started</span>
+        </div>
+        <div class="bars" id="bars"></div>
+      </div>
+
+      <div class="panelbox">
+        <h2>Overall status</h2>
+        <div class="cap">Share of all actions in each status.</div>
+        <div class="donutwrap">
+          <div class="donut" id="donut"></div>
+          <div class="dlegend" id="dlegend"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panelbox" style="margin-top:14px">
+      <h2>Where the work sits</h2>
+      <div class="cap">Number of actions by lead department — which parts of the city carry the most near-term work.</div>
+      <div id="depts"></div>
+    </div>
+
+    <div class="sectornav" id="sectornav"></div>
+
+    <div class="sectionhead">
+      <h2 id="listTitle">All actions</h2>
+      <span class="n" id="listCount"></span>
+      <button id="clearBtn" class="hidden" onclick="selectSector(null)">Show all sectors</button>
+    </div>
+    <div class="alist" id="alist"></div>
+  </div>
+
+  <div class="footer-note">
+    Prepared by the ASU Community Capital Lab. Action data from the Canton Implementation Matrix (near-term actions under direct city control) shared by Nutter Consulting.
+    Status and progress notes are maintained by city staff in the connected tracker sheet; this dashboard reads from it directly.
+  </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closePanel()"></div>
+<aside class="panel" id="panel" aria-label="Action detail">
+  <div class="panel-head">
+    <button class="panel-close" onclick="closePanel()" aria-label="Close">×</button>
+    <div class="sec" id="pSector"></div>
+    <h3 id="pTitle"></h3>
+  </div>
+  <div class="panel-body" id="pBody"></div>
+</aside>
+
+<script>
+const KEY='canton-dash-sheet';
+const SECTOR_COLORS={
+  'Buildings and Energy':'#C08A2E',
+  'Transportation':'#7A6BA8',
+  'Materials and Waste':'#8A7B63',
+  'Natural Areas and Land Use':'#3E8E5F',
+  'Water and Wastewater':'#2E7D8F',
+  'Food Systems':'#B5713A',
+  'Resilience':'#5A7BA8',
+  'Air Quality and Public Health':'#A85A6B'
+};
+const STATUSES=['Complete','In Progress','On Hold','Not Started'];
+const SCOLOR={'Complete':'var(--st-done)','In Progress':'var(--st-prog)','On Hold':'var(--st-hold)','Not Started':'var(--st-not)'};
+const SCLS={'Complete':'sD','In Progress':'sP','On Hold':'sH','Not Started':'sN'};
+const BADGE={'Complete':'done','In Progress':'prog','On Hold':'hold','Not Started':'not'};
+let rows=[], sheetUrl='', editUrl='', selSector=null;
+
+function parseCSV(text){
+  const out=[]; let row=[], f='', q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(f); f=''; }
+    else if(c==='\n'){ row.push(f); out.push(row); row=[]; f=''; }
+    else if(c!=='\r') f+=c;
+  }
+  if(f||row.length){ row.push(f); out.push(row); }
+  return out.filter(r=>r.some(c=>c.trim()!==''));
+}
+function toCsvUrl(url){
+  url=url.trim();
+  if(url.includes('/pubhtml')){
+    const gid=(url.match(/[?&]gid=(\d+)/)||[])[1];
+    return url.replace(/\/pubhtml.*$/,'/pub?output=csv'+(gid?'&gid='+gid:''));
+  }
+  if(url.includes('/pub')){
+    if(url.includes('output=csv')) return url;
+    if(/output=\w+/.test(url)) return url.replace(/output=\w+/,'output=csv');
+    return url+(url.includes('?')?'&':'?')+'output=csv';
+  }
+  const m=url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if(m){ const gid=(url.match(/[#&]gid=(\d+)/)||[])[1]||'0';
+    return `https://docs.google.com/spreadsheets/d/${m[1]}/gviz/tq?tqx=out:csv&gid=${gid}`; }
+  return null;
+}
+function toEditUrl(u){ const m=u.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/); return m?`https://docs.google.com/spreadsheets/d/${m[1]}/edit`:''; }
+
+async function connectSheet(){
+  const raw=document.getElementById('sheetUrl').value;
+  const err=document.getElementById('setupErr');
+  const csv=toCsvUrl(raw);
+  if(!csv){ err.textContent='That does not look like a Google Sheets link.'; err.style.display='block'; return; }
+  err.style.display='none'; sheetUrl=csv; editUrl=toEditUrl(raw);
+  try{ await window.storage.set(KEY, JSON.stringify({csv:sheetUrl,edit:editUrl})); }catch(e){}
+  loadSheet();
+}
+async function changeSheet(){
+  try{ await window.storage.delete(KEY); }catch(e){}
+  sheetUrl=''; rows=[];
+  document.getElementById('setup').classList.remove('hidden');
+  document.getElementById('main').classList.add('hidden');
+  document.getElementById('syncmsg').innerHTML='';
+  document.getElementById('asof').textContent='';
+}
+async function loadSheet(){
+  if(!sheetUrl) return;
+  const sm=document.getElementById('syncmsg');
+  sm.innerHTML='<span class="status-dot stale"></span>Loading…';
+  try{
+    const res=await fetch(sheetUrl);
+    if(!res.ok) throw new Error(res.status);
+    const p=parseCSV(await res.text());
+    if(p.length<2) throw new Error('empty');
+    const hdr=p[0].map(h=>h.trim());
+    rows=p.slice(1).map(r=>{const o={};hdr.forEach((h,i)=>o[h]=(r[i]||'').trim());return o;})
+          .filter(o=>o['Action (116)']);
+    const now=new Date();
+    sm.innerHTML=`<span class="status-dot"></span>Updated ${now.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`;
+    document.getElementById('asof').textContent='Data current as of '+now.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+    document.getElementById('setup').classList.add('hidden');
+    document.getElementById('main').classList.remove('hidden');
+    render();
+  }catch(e){
+    sm.innerHTML='<span class="status-dot err"></span>Could not load';
+    document.getElementById('setup').classList.remove('hidden');
+    const err=document.getElementById('setupErr');
+    err.textContent='Could not read that sheet. Make sure it is published as CSV (File → Share → Publish to web → Comma-separated values).';
+    err.style.display='block';
+  }
+}
+
+const stOf=r=>STATUSES.includes(r.Status)?r.Status:'Not Started';
+function tally(list){ const c={}; STATUSES.forEach(s=>c[s]=0); list.forEach(r=>c[stOf(r)]++); return c; }
+
+function renderKPIs(){
+  const c=tally(rows);
+  const started=c['Complete']+c['In Progress'];
+  const pct=rows.length?Math.round(started/rows.length*100):0;
+  document.getElementById('kpis').innerHTML=`
+    <div class="kpi"><div class="n">${rows.length}</div><div class="l">Near-term actions</div></div>
+    <div class="kpi"><div class="n">${c['In Progress']}</div><div class="l">In progress</div></div>
+    <div class="kpi"><div class="n">${c['Complete']}</div><div class="l">Complete</div></div>
+    <div class="kpi"><div class="n">${pct}%</div><div class="l">Underway or done</div></div>
+    <div class="kpi"><div class="n">${new Set(rows.map(r=>r.Sector)).size}</div><div class="l">Sectors covered</div></div>`;
+}
+
+function renderBars(){
+  const secs=[...new Set(rows.map(r=>r.Sector))]
+    .map(s=>({s, list:rows.filter(r=>r.Sector===s)}))
+    .sort((a,b)=>b.list.length-a.list.length);
+  const max=Math.max(...secs.map(x=>x.list.length));
+  document.getElementById('bars').innerHTML=secs.map(({s,list})=>{
+    const c=tally(list);
+    const widthPct=(list.length/max)*100;
+    const segs=STATUSES.filter(st=>c[st]>0).map(st=>
+      `<i class="${SCLS[st]}" style="width:${(c[st]/list.length)*100}%" title="${st}: ${c[st]}"></i>`).join('');
+    return `<div class="barrow" onclick="selectSector('${s.replace(/'/g,"\\'")}')" title="${s}">
+      <div class="nm">${s}</div>
+      <div style="width:${widthPct}%"><div class="track">${segs}</div></div>
+      <div class="tot">${list.length}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderDonut(){
+  const c=tally(rows), total=rows.length;
+  let acc=0; const stops=[];
+  STATUSES.forEach(st=>{
+    if(!c[st]) return;
+    const frac=c[st]/total*100;
+    stops.push(`${SCOLOR[st]} ${acc}% ${acc+frac}%`);
+    acc+=frac;
+  });
+  const started=c['Complete']+c['In Progress'];
+  document.getElementById('donut').innerHTML=
+    `<div style="width:190px;height:190px;border-radius:50%;background:conic-gradient(${stops.join(',')})"></div>
+     <div style="position:absolute;inset:30px;background:var(--card);border-radius:50%"></div>
+     <div class="mid"><div class="n">${total?Math.round(started/total*100):0}%</div><div class="l">Underway</div></div>`;
+  document.getElementById('dlegend').innerHTML=STATUSES.map(st=>
+    `<div class="r"><b style="background:${SCOLOR[st]}"></b>${st}<span class="v">${c[st]} · ${total?Math.round(c[st]/total*100):0}%</span></div>`).join('');
+}
+
+function renderDepts(){
+  const m={};
+  rows.forEach(r=>{ const d=r['Lead Agency/Department/Role']||'Unassigned'; m[d]=(m[d]||0)+1; });
+  const arr=Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const max=arr.length?arr[0][1]:1;
+  document.getElementById('depts').innerHTML=arr.map(([d,n])=>
+    `<div class="deptrow"><div class="nm" title="${d}">${d}</div>
+     <div class="bar" style="width:${(n/max)*100}%"></div><div class="v">${n}</div></div>`).join('');
+}
+
+function renderSectorNav(){
+  const secs=[...new Set(rows.map(r=>r.Sector))].sort();
+  document.getElementById('sectornav').innerHTML=secs.map(s=>{
+    const n=rows.filter(r=>r.Sector===s).length;
+    const col=SECTOR_COLORS[s]||'#5A6377';
+    return `<button class="sbtn ${selSector===s?'on':''}" style="background:${col}" onclick="selectSector('${s.replace(/'/g,"\\'")}')">
+      <div class="t">${s}</div><div class="c">${n} action${n>1?'s':''}</div></button>`;
+  }).join('');
+}
+
+function selectSector(s){
+  selSector = (selSector===s)?null:s;
+  renderSectorNav(); renderList();
+  if(selSector) document.getElementById('listTitle').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function renderList(){
+  const list = selSector ? rows.filter(r=>r.Sector===selSector) : rows;
+  document.getElementById('listTitle').textContent = selSector || 'All actions';
+  document.getElementById('listCount').textContent = `${list.length} action${list.length===1?'':'s'}`;
+  document.getElementById('clearBtn').classList.toggle('hidden', !selSector);
+  document.getElementById('alist').innerHTML=list.map(r=>{
+    const st=stOf(r);
+    return `<button class="act" onclick="openPanel('${r.ID}')">
+      <span class="badge ${BADGE[st]}">${st}</span>
+      <div><div class="t">${r['Action (116)']}</div><div class="m">${r.Sector} · ${r['Strategy (24)']}</div></div>
+      <div class="lead">${r['Lead Agency/Department/Role']||''}</div>
+    </button>`;
+  }).join('');
+}
+
+function openPanel(id){
+  const r=rows.find(x=>x.ID===String(id)); if(!r) return;
+  const st=stOf(r);
+  document.getElementById('pSector').textContent=r.Sector;
+  document.getElementById('pTitle').textContent=r['Action (116)'];
+  let h=`<div class="dsec"><div class="k">Status</div><div class="v"><span class="badge ${BADGE[st]}">${st}</span></div></div>`;
+  if(r['Progress Notes']) h+=`<div class="dsec"><div class="k">Progress notes</div><div class="v">${r['Progress Notes']}</div></div>`;
+  if(r['Last Updated']||r['Updated By']) h+=`<div class="dsec"><div class="k">Last updated</div><div class="v">${r['Last Updated']||'—'}${r['Updated By']?' · '+r['Updated By']:''}</div></div>`;
+  if(editUrl) h+=`<div class="dsec"><a class="editlink" href="${editUrl}" target="_blank" rel="noopener">Update in tracker sheet →</a></div>`;
+  h+=`<div class="dsec"><div class="k">Lead department</div><div class="v">${r['Lead Agency/Department/Role']||'—'}</div></div>`;
+  h+=`<div class="dsec"><div class="k">Strategy</div><div class="v">${r['Strategy (24)']}</div></div>`;
+  h+=`<div class="dsec"><div class="k">How progress is measured</div><div class="v kpitext">${r['Key Performance Indicators']||'—'}</div></div>`;
+  h+=`<div class="dsec"><div class="k">Timeframe &amp; anticipated cost</div><div class="v">${r.Timeframe||'—'} · ${r['Anticipated cost to City']||'—'}</div></div>`;
+  if(r['Cost assumptions']) h+=`<div class="dsec"><div class="k">Cost assumptions</div><div class="v">${r['Cost assumptions']}</div></div>`;
+  h+=`<div class="dsec"><div class="k">Potential funding &amp; technical assistance</div><div class="v">${r['Potential funding sources and technical assistance']||'To be identified'}</div></div>`;
+  if(r['External partner support']) h+=`<div class="dsec"><div class="k">Partners</div><div class="v">${r['External partner support']}</div></div>`;
+  document.getElementById('pBody').innerHTML=h;
+  document.getElementById('panel').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+}
+function closePanel(){
+  document.getElementById('panel').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePanel()});
+
+function render(){ renderKPIs(); renderBars(); renderDonut(); renderDepts(); renderSectorNav(); renderList(); }
+
+(async function(){
+  try{
+    const s=await window.storage.get(KEY);
+    if(s){ const o=JSON.parse(s.value); sheetUrl=o.csv; editUrl=o.edit; loadSheet(); }
+  }catch(e){}
+})();
+setInterval(()=>{ if(sheetUrl) loadSheet(); }, 120000);
+</script>
+</body>
+</html>
